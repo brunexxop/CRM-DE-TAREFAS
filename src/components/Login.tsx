@@ -37,7 +37,7 @@ export default function Login({ onLogin }: LoginProps) {
         className="w-full max-w-md glass-card p-8 rounded-[32px] border border-outline-variant/10"
       >
         <div className="text-center mb-10">
-          <h1 className="text-primary font-extrabold text-4xl uppercase tracking-tighter mb-2">TaskFlow</h1>
+          <h1 className="text-primary font-extrabold text-4xl uppercase tracking-tighter mb-2">SubControl</h1>
           <p className="text-on-surface-variant">
             {isSignUp ? 'Crie sua conta local para começar' : 'Entre localmente para continuar'}
           </p>

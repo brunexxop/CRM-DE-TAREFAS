@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle2, Circle, Clock, Calendar } from 'lucide-react';
-import { Task } from '../types';
+import { Task } from '../services';
 
 interface HistoryProps {
   tasks: Task[];

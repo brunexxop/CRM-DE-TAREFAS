@@ -1,6 +1,6 @@
 import React from 'react';
 import { LayoutDashboard, ClipboardList, Settings, Search, History } from 'lucide-react';
-import { User } from '../types';
+import { User } from '../services';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,7 +24,7 @@ export default function Layout({ children, activeTab, setActiveTab, user }: Layo
                 referrerPolicy="no-referrer"
               />
             </div>
-            <span className="text-primary font-extrabold text-2xl uppercase tracking-tighter">CRM de tarefas</span>
+            <span className="text-primary font-extrabold text-2xl uppercase tracking-tighter">SubControl</span>
           </div>
           <button className="text-primary hover:opacity-80 transition-opacity active:scale-95">
             <Search size={24} />

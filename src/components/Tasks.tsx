@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Clock, MoreVertical, ChevronRight, CheckCircle, CalendarX } from 'lucide-react';
-import { Task } from '../types';
+import { Task } from '../services';
 
 interface TasksProps {
   tasks: Task[];

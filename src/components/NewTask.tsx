@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Search, PlusCircle, Calendar, ChevronDown, Lightbulb } from 'lucide-react';
-import { User, Priority, Task } from '../types';
+import { User, Priority, Task } from '../services';
 
 interface NewTaskProps {
   onClose: () => void;

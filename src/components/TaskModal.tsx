@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Clock, Calendar, Trash2, CheckCircle2, AlertCircle, Edit3 } from 'lucide-react';
-import { Task, Priority, Status } from '../types';
+import { Task, Priority, Status } from '../services';
 
 interface TaskModalProps {
   task: Task;

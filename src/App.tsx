@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -8,96 +8,136 @@ import NewTask from './components/NewTask';
 import Login from './components/Login';
 import TaskModal from './components/TaskModal';
 import History from './components/History';
-import { Task, User } from './types';
+import { api, Task, User, DashboardStats } from './services';
 
 type Tab = 'dashboard' | 'tasks' | 'settings' | 'history';
-
-const DEFAULT_USER: User = {
-  id: 'local-user',
-  name: 'Usuário Local',
-  email: 'usuario@exemplo.com',
-  avatar: 'https://picsum.photos/seed/user/200'
-};
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [user, setUser] = useState<User>(DEFAULT_USER);
+  const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [taskFilter, setTaskFilter] = useState<'Pendente' | 'Concluído' | 'Atrasado'>('Pendente');
   const [isLoading, setIsLoading] = useState(true);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
-  useEffect(() => {
-    // Simular carregamento inicial
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      // Tentar carregar dados do localStorage
-      const savedTasks = localStorage.getItem('taskflow_tasks');
-      const savedUser = localStorage.getItem('taskflow_user');
-      const savedAuth = localStorage.getItem('taskflow_auth');
-
-      if (savedTasks) setTasks(JSON.parse(savedTasks));
-      if (savedUser) setUser(JSON.parse(savedUser));
-      if (savedAuth === 'true') setIsLoggedIn(true);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+  const loadData = useCallback(async () => {
+    try {
+      const [tasksData, statsData] = await Promise.all([
+        api.getTasks(),
+        api.getStats()
+      ]);
+      setTasks(tasksData);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    }
   }, []);
 
-  // Persistir dados no localStorage
   useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem('taskflow_tasks', JSON.stringify(tasks));
-      localStorage.setItem('taskflow_user', JSON.stringify(user));
-      localStorage.setItem('taskflow_auth', isLoggedIn ? 'true' : 'false');
+    const init = async () => {
+      const { isLoggedIn: authStatus, user: authUser } = await api.checkAuth();
+      setIsLoggedIn(authStatus);
+      setUser(authUser);
+      
+      if (authStatus) {
+        await loadData();
+      }
+      
+      setIsLoading(false);
+    };
+    init();
+  }, [loadData]);
+
+  const handleLogin = async (email: string) => {
+    setIsActionLoading(true);
+    try {
+      const loggedUser = await api.login(email);
+      setUser(loggedUser);
+      setIsLoggedIn(true);
+      await loadData();
+    } catch (error) {
+      console.error('Erro no login:', error);
+    } finally {
+      setIsActionLoading(false);
     }
-  }, [tasks, user, isLoggedIn, isLoading]);
-
-  const handleLogin = (email: string) => {
-    setIsLoggedIn(true);
-    setUser({
-      ...user,
-      email,
-      name: email.split('@')[0]
-    });
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    localStorage.removeItem('taskflow_auth');
+  const handleLogout = async () => {
+    setIsActionLoading(true);
+    try {
+      await api.logout();
+      setIsLoggedIn(false);
+      setUser(null);
+      setTasks([]);
+      setStats(null);
+    } catch (error) {
+      console.error('Erro no logout:', error);
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
-  const addTask = (task: Omit<Task, 'id' | 'user_id'>) => {
-    const newTask: Task = { 
-      ...task, 
-      id: Math.random().toString(36).substr(2, 9),
-      user_id: user.id
-    } as Task;
-    setTasks([newTask, ...tasks]);
-    setIsAddingTask(false);
+  const addTask = async (task: Omit<Task, 'id' | 'user_id'>) => {
+    if (!user) return;
+    setIsActionLoading(true);
+    try {
+      const newTask = await api.createTask({ ...task, user_id: user.id } as Task);
+      setTasks(prev => [newTask, ...prev]);
+      await loadData(); // Atualizar stats
+      setIsAddingTask(false);
+    } catch (error) {
+      console.error('Erro ao adicionar tarefa:', error);
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
-  const updateTask = (updatedTask: Task) => {
-    setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
-    if (selectedTask?.id === updatedTask.id) setSelectedTask(updatedTask);
+  const updateTask = async (updatedTask: Task) => {
+    setIsActionLoading(true);
+    try {
+      const result = await api.updateTask(updatedTask);
+      setTasks(prev => prev.map(t => t.id === result.id ? result : t));
+      if (selectedTask?.id === result.id) setSelectedTask(result);
+      await loadData(); // Atualizar stats
+    } catch (error) {
+      console.error('Erro ao atualizar tarefa:', error);
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter(t => t.id !== id));
-    setSelectedTask(null);
+  const deleteTask = async (id: string) => {
+    setIsActionLoading(true);
+    try {
+      await api.deleteTask(id);
+      setTasks(prev => prev.filter(t => t.id !== id));
+      setSelectedTask(null);
+      await loadData(); // Atualizar stats
+    } catch (error) {
+      console.error('Erro ao deletar tarefa:', error);
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
-  const updateUser = (updatedUser: User) => {
+  const updateUser = async (updatedUser: User) => {
+    // No mockService não temos updateUser explicitamente, mas podemos simular
     setUser(updatedUser);
+    localStorage.setItem('taskflow_user', JSON.stringify(updatedUser));
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-on-surface-variant text-sm font-bold uppercase tracking-widest animate-pulse">
+          Iniciando SubControl...
+        </p>
       </div>
     );
   }
@@ -112,6 +152,7 @@ export default function App() {
         return (
           <Dashboard 
             tasks={tasks} 
+            stats={stats}
             onAddTask={() => setIsAddingTask(true)} 
             onTaskClick={setSelectedTask}
             onUpdateTask={updateTask}
@@ -141,7 +182,7 @@ export default function App() {
       case 'settings':
         return (
           <Settings 
-            user={user} 
+            user={user!} 
             onUpdateUser={updateUser} 
             onLogout={handleLogout} 
           />
@@ -153,13 +194,27 @@ export default function App() {
 
   return (
     <>
-      <Layout activeTab={activeTab} setActiveTab={setActiveTab} user={user}>
+      <Layout activeTab={activeTab} setActiveTab={setActiveTab} user={user!}>
         <AnimatePresence mode="wait">
           <React.Fragment key={activeTab}>
             {renderContent()}
           </React.Fragment>
         </AnimatePresence>
       </Layout>
+
+      {/* Overlay de Loading para ações */}
+      <AnimatePresence>
+        {isActionLoading && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-background/50 backdrop-blur-sm z-[100] flex items-center justify-center"
+          >
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isAddingTask && (

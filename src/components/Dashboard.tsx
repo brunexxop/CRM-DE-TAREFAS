@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Clock, Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Task } from '../types';
+import { Clock, Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, List } from 'lucide-react';
+import { Task, DashboardStats } from '../services';
 
 interface DashboardProps {
   tasks: Task[];
+  stats: DashboardStats | null;
   onAddTask: () => void;
   onTaskClick: (task: Task) => void;
   onUpdateTask: (task: Task) => void;
@@ -15,6 +16,7 @@ interface DashboardProps {
 
 export default function Dashboard({ 
   tasks, 
+  stats,
   onAddTask, 
   onTaskClick, 
   onUpdateTask,
@@ -24,8 +26,7 @@ export default function Dashboard({
 }: DashboardProps) {
   const [viewDate, setViewDate] = useState(new Date());
 
-  const completedTasksCount = tasks.filter(t => t.status === 'Concluído').length;
-  const dailyProgress = tasks.length > 0 ? Math.round((completedTasksCount / tasks.length) * 100) : 0;
+  const dailyProgress = stats?.completionRate || 0;
   
   const upcomingTasks = tasks.filter(t => {
     if (t.status === 'Concluído') return false;
@@ -57,12 +58,10 @@ export default function Dashboard({
     const firstDay = getFirstDayOfMonth(year, month);
     const days = [];
 
-    // Empty slots for days of previous month
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="h-10"></div>);
     }
 
-    // Days of current month
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const isSelected = selectedDate === dateStr;
@@ -119,12 +118,12 @@ export default function Dashboard({
           <div className="relative z-10">
             <p className="text-on-surface-variant font-medium text-xs uppercase tracking-wider mb-1">VISÃO GERAL</p>
             <h1 className="text-3xl font-extrabold text-on-surface tracking-tight mb-4">
-              {tasks.filter(t => t.status !== 'Concluído').length} tarefas pendentes
+              {stats?.pendingTasks || 0} tarefas pendentes
             </h1>
             
             <div className="space-y-2">
               <div className="flex justify-between text-xs font-bold text-secondary">
-                <span className="uppercase tracking-widest">Progresso Semanal</span>
+                <span className="uppercase tracking-widest">Taxa de Conclusão</span>
                 <span>{dailyProgress}%</span>
               </div>
               <div className="w-full h-2 bg-surface-container-lowest rounded-full overflow-hidden">
@@ -136,6 +135,46 @@ export default function Dashboard({
                 ></motion.div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* KPI Cards */}
+      <section className="grid grid-cols-2 gap-4">
+        <div className="bg-surface-container-low p-4 rounded-3xl border border-outline-variant/10 flex flex-col gap-2">
+          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+            <List size={16} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Total</p>
+            <p className="text-xl font-extrabold text-on-surface">{stats?.totalTasks || 0}</p>
+          </div>
+        </div>
+        <div className="bg-surface-container-low p-4 rounded-3xl border border-outline-variant/10 flex flex-col gap-2">
+          <div className="w-8 h-8 rounded-xl bg-secondary/10 flex items-center justify-center">
+            <CheckCircle size={16} className="text-secondary" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Concluídas</p>
+            <p className="text-xl font-extrabold text-on-surface">{stats?.completedTasks || 0}</p>
+          </div>
+        </div>
+        <div className="bg-surface-container-low p-4 rounded-3xl border border-outline-variant/10 flex flex-col gap-2">
+          <div className="w-8 h-8 rounded-xl bg-tertiary/10 flex items-center justify-center">
+            <Clock size={16} className="text-tertiary" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Pendentes</p>
+            <p className="text-xl font-extrabold text-on-surface">{stats?.pendingTasks || 0}</p>
+          </div>
+        </div>
+        <div className="bg-surface-container-low p-4 rounded-3xl border border-outline-variant/10 flex flex-col gap-2">
+          <div className="w-8 h-8 rounded-xl bg-error/10 flex items-center justify-center">
+            <AlertCircle size={16} className="text-error" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Atrasadas</p>
+            <p className="text-xl font-extrabold text-on-surface">{stats?.overdueTasks || 0}</p>
           </div>
         </div>
       </section>

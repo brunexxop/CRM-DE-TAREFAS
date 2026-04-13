@@ -20,3 +20,11 @@ export interface User {
   email: string;
   avatar: string;
 }
+
+export interface DashboardStats {
+  totalTasks: number;
+  pendingTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  completionRate: number;
+}

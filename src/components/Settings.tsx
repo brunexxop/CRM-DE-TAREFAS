@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Edit2, Bell, Palette, Globe, LogOut, ChevronRight, Save, Camera } from 'lucide-react';
-import { User } from '../types';
+import { User } from '../services';
 
 interface SettingsProps {
   user: User;
